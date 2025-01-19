@@ -1,12 +1,11 @@
-﻿# CMakeList.txt : CMake project for Argus, include source and define
-# project specific logic here.
+﻿find_package(PkgConfig REQUIRED)
+pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
+
+# This will populate variables like:
+#   GSTREAMER_INCLUDE_DIRS, GSTREAMER_LIBRARY_DIRS, GSTREAMER_LIBRARIES
 #
+# You then need to add them to your target:
+include_directories(${GSTREAMER_INCLUDE_DIRS})
+link_directories(${GSTREAMER_LIBRARY_DIRS})
 
-# Add source to this project's executable.
-add_executable (Argus "Argus.cpp" "Argus.h")
-
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET Argus PROPERTY CXX_STANDARD 20)
-endif()
-
-# TODO: Add tests and install targets if needed.
+target_link_libraries(Argus ${GSTREAMER_LIBRARIES})

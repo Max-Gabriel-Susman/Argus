@@ -1,15 +1,30 @@
-﻿# CMakeList.txt : Top-level CMake project file, do global configuration
-# and include sub-projects here.
-#
-cmake_minimum_required (VERSION 3.8)
+﻿cmake_minimum_required(VERSION 3.10)
 
-# Enable Hot Reload for MSVC compilers if supported.
-if (POLICY CMP0141)
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+project(Argus)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
+add_executable(Argus 
+    Argus/Argus.cpp 
+    Argus/Argus.h
+)
+
+
+
+if (CMAKE_VERSION VERSION_GREATER 3.12)
+    set_property(TARGET Argus PROPERTY CXX_STANDARD 20)
 endif()
 
-project ("Argus")
+# -- Add GStreamer, e.g. method A with pkg-config --
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
+include_directories(${GSTREAMER_INCLUDE_DIRS})
+link_directories(${GSTREAMER_LIBRARY_DIRS})
+target_link_libraries(Argus ${GSTREAMER_LIBRARIES})
 
-# Include sub-projects.
-add_subdirectory ("Argus")
+include_directories(${GST_INCLUDE_DIRS})
+
+
+# or -- method B on Windows, set GSTREAMER_ROOT, etc. --
+# set(GSTREAMER_ROOT "C:/gstreamer/1.0/x86_64")
+# ... and so on ...
