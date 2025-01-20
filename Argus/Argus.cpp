@@ -1,94 +1,94 @@
 ﻿#include "Argus.h"
+#include <iostream>
+
+// Include GStreamer headers
 #include <gst/gst.h>
+#include <glib.h>
 
-int main(int argc, char* argv[])
+// We’ll keep a pointer to the main loop here so that start/stop can manage it
+static GMainLoop* loop = nullptr;
+
+/**
+ * Initialize the GStreamer library
+ */
+void init_gstreamer()
 {
-    gst_init(&argc, &argv);
+    gst_init(nullptr, nullptr);
+}
 
-    g_print("Starting GStreamer pipeline...\n");
-
-    // Example pipeline:
-    //
-    // rtmpsrc location=rtmp://yourHost/live/test !
-    //   flvdemux name=demux
-    //   demux.video ! queue ! h264parse ! avdec_h264 ! videoconvert ! x264enc tune=zerolatency bitrate=2000 ! queue ! mux.
-    //   demux.audio ! queue ! decodebin ! audioconvert ! audioresample ! avenc_aac ! queue ! mux.
-    //   mpegtsmux name=mux ! tcpserversink host=0.0.0.0 port=5000
-    //
-    // - "rtmpsrc location=..." pulls RTMP from an existing server
-    // - "tcpserversink" lets VLC connect via tcp://host:5000
-
-    const char* pipeline_desc =
-        "rtmpsrc location=rtmp://yourHost/live/test ! "
-        "flvdemux name=demux "
-        "demux.video ! queue ! h264parse ! avdec_h264 ! videoconvert ! x264enc tune=zerolatency bitrate=2000 ! queue ! mux. "
-        "demux.audio ! queue ! decodebin ! audioconvert ! audioresample ! avenc_aac ! queue ! mux. "
-        "mpegtsmux name=mux ! tcpserversink host=0.0.0.0 port=5000";
-
-    GError* error = nullptr;
-    GstElement* pipeline = gst_parse_launch(pipeline_desc, &error);
-
+/**
+ * Parse and run an RTMP-forwarding pipeline until stopped.
+ *
+ * \param pipelineStr A string describing the GStreamer pipeline
+ */
+void start_rtmp_forwarding(const std::string& pipelineStr)
+{
+    // Parse the pipeline string into a GstElement*
+    GstElement* pipeline = gst_parse_launch(pipelineStr.c_str(), nullptr);
     if (!pipeline) {
-        g_printerr("Pipeline parse error: %s\n", error->message);
-        g_clear_error(&error);
-        return -1;
-    }
-    if (error) {
-        g_printerr("Pipeline parse warning: %s\n", error->message);
-        g_clear_error(&error);
+        std::cerr << "Failed to create pipeline from string." << std::endl;
+        return;
     }
 
-    // Start playing
-    GstStateChangeReturn ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
-    if (ret == GST_STATE_CHANGE_FAILURE) {
-        g_printerr("Unable to set the pipeline to the playing state.\n");
-        gst_object_unref(pipeline);
-        return -1;
-    }
+    // Create a main loop so we can run the pipeline
+    loop = g_main_loop_new(nullptr, FALSE);
 
-    g_print("Pipeline is playing. Press Ctrl+C to stop or wait for EOS.\n");
-
-    // Create a GMainLoop so we can watch for messages (errors, EOS, etc.)
-    GMainLoop* loop = g_main_loop_new(nullptr, FALSE);
-
-    // Watch the pipeline's bus
+    // Attach a bus watch to handle async messages (errors, EOS, etc.)
     GstBus* bus = gst_element_get_bus(pipeline);
-    gst_bus_add_watch(
-        bus,
-        [](GstBus* bus, GstMessage* msg, gpointer user_data) -> gboolean {
-            switch (GST_MESSAGE_TYPE(msg)) {
-            case GST_MESSAGE_ERROR:
-            {
-                GError* err;
-                gchar* debug;
-                gst_message_parse_error(msg, &err, &debug);
-                g_printerr("Error from %s: %s\n", GST_OBJECT_NAME(msg->src), err->message);
-                g_printerr("Debug info: %s\n", debug ? debug : "none");
-                g_clear_error(&err);
-                g_free(debug);
-                g_main_loop_quit((GMainLoop*)user_data);
-                break;
-            }
-            case GST_MESSAGE_EOS:
-                g_print("End-Of-Stream reached.\n");
-                g_main_loop_quit((GMainLoop*)user_data);
-                break;
-            default:
-                break;
-            }
-            return TRUE;
-        },
-        loop);
+    gst_bus_add_watch(bus, (GstBusFunc)gst_bus_async_signal_func, nullptr);
     gst_object_unref(bus);
 
-    // Run the loop until EOS or error
+    // Set the pipeline to PLAYING
+    gst_element_set_state(pipeline, GST_STATE_PLAYING);
+
+    // This blocks until stop_pipeline() is called (g_main_loop_quit)
     g_main_loop_run(loop);
 
-    g_print("Main loop finished. Cleaning up...\n");
+    // Once we exit g_main_loop_run, set pipeline to NULL and unref
     gst_element_set_state(pipeline, GST_STATE_NULL);
     gst_object_unref(pipeline);
-    g_main_loop_unref(loop);
 
-    g_print("Done.\n");
+    // Cleanup the main loop
+    if (loop) {
+        g_main_loop_unref(loop);
+        loop = nullptr;
+    }
+}
+
+/**
+ * Stop the currently running pipeline
+ */
+void stop_pipeline()
+{
+    if (loop) {
+        g_main_loop_quit(loop);
+    }
+}
+
+/**
+ * Main entry point
+ */
+int main()
+{
+    std::cout << "Initializing Argus..." << std::endl;
+
+    // 1. Initialize GStreamer
+    init_gstreamer();
+
+    // 2. Define your GStreamer pipeline string
+    //    (Update URIs and elements as needed for your setup)
+    const std::string pipelineStr =
+        "rtmpsrc location=\"rtmp://localhost/incoming/myStream\" ! "
+        "flvdemux name=demux "
+        "demux.video ! queue ! h264parse ! mux. "
+        "demux.audio ! queue ! aacparse ! mux. "
+        "flvmux name=mux ! "
+        "rtmpsink location=\"rtmp://localhost/outgoing/myRestream\"";
+
+    // 3. Start RTMP forwarding. This call will block until stop_pipeline() is called.
+    //    In a real application, you might trigger stop_pipeline() on some event or signal.
+    start_rtmp_forwarding(pipelineStr);
+
+    std::cout << "Argus online." << std::endl;
     return 0;
 }
