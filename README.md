@@ -27,5 +27,8 @@ Push an mp4 file(you'll have to add your own mp4 file as none are kept on Github
 make stream
 ```
 
+ingest the stream with VLC:
+    1. Media > Open Network Stream 
 
+    2. Use `rtmp://localhost/outgoing/myRestream` as the network URL
 
