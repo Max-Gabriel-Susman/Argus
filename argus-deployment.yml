@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argus-deployment
+  labels:
+    app: argus
+spec:
+  replicas: 2  # Number of pod replicas
+  selector:
+    matchLabels:
+      app: argus
+  template:
+    metadata:
+      labels:
+        app: argus
+    spec:
+      containers:
+      - name: argus
+        image: cpp-environment:latest  # Replace with your built image, e.g., `your-dockerhub-username/cpp-environment:latest`
+        ports:
+        - containerPort: 8080  # Change if your app uses a different port
+        volumeMounts:
+        - name: argus-code
+          mountPath: /app
+      volumes:
+      - name: argus-code
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argus-service
+spec:
+  selector:
+    app: argus
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080  # Match the containerPort from the deployment
+  type: ClusterIP  # Change to NodePort or LoadBalancer based on your needs
