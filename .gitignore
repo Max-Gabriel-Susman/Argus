@@ -39,3 +39,9 @@ Testing/
 *.o
 *.so
 *.a
+
+## Ignore media files in the media directory
+media/*.mp4
+media/*.ts
+media/*.m3u8
+media/*.flv
