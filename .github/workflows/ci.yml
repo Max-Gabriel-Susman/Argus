@@ -16,15 +16,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up C++
-        uses: actions/setup-cpp@v2
-        with:
-          compiler: g++-11
-
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential
+          sudo apt-get install -y g++ cmake build-essential
 
       - name: Build
         run: |
