@@ -1,8 +1,8 @@
-﻿// Argus.h : Include file for standard system include files,
-// or project specific include files.
+﻿#pragma once
 
-#pragma once
+#include <string>
 
-#include <iostream>
-
-// TODO: Reference additional headers your program requires here.
+// Simple function prototypes for GStreamer pipeline control
+void init_gstreamer();
+void start_rtmp_forwarding(const std::string& pipelineStr);
+void stop_pipeline();
