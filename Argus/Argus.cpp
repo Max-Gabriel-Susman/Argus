@@ -4,6 +4,7 @@
 // Include GStreamer headers
 #include <gst/gst.h>
 #include <glib.h>
+#include <gst/gstdebugutils.h> // Needed for gst_debug_bin_to_dot_file* macros
 
 // We’ll keep a pointer to the main loop here so that start/stop can manage it
 static GMainLoop* loop = nullptr;
@@ -40,6 +41,18 @@ void start_rtmp_forwarding(const std::string& pipelineStr)
 
     // Set the pipeline to PLAYING
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
+
+    // Optionally wait for state change to complete before dumping the dot file
+    GstStateChangeReturn ret = gst_element_get_state(pipeline, nullptr, nullptr, GST_CLOCK_TIME_NONE);
+    if (ret == GST_STATE_CHANGE_SUCCESS || ret == GST_STATE_CHANGE_ASYNC) {
+        // Generate a DOT file showing the pipeline topology at this time
+        gst_debug_bin_to_dot_file_with_ts(
+            GST_BIN(pipeline),
+            GST_DEBUG_GRAPH_SHOW_ALL,
+            "rtmp_forward_pipeline"
+        );
+        std::cout << "DOT file generated for pipeline graph." << std::endl;
+    }
 
     // This blocks until stop_pipeline() is called (g_main_loop_quit)
     g_main_loop_run(loop);
