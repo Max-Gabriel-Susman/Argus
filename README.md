@@ -1,6 +1,6 @@
 # Argus
 
-Argus is a streaming service that uses gstreamer for constructing a media pipeline and performing image processing tasks like object detection.
+Argus is a media streaming service that uses gstreamer to build and manage media pipelines and performing image processing tasks like object detection.
 
 ## Local Usage
 
